@@ -3,8 +3,8 @@ FROM amd64/debian:buster-slim as builder
 # Fluent Bit version
 ENV FLB_MAJOR 1
 ENV FLB_MINOR 7
-ENV FLB_PATCH 1
-ENV FLB_VERSION 1.7.1
+ENV FLB_PATCH 2
+ENV FLB_VERSION 1.7.2
 
 ARG FLB_TARBALL=https://github.com/fluent/fluent-bit/archive/v$FLB_VERSION.tar.gz
 ENV FLB_SOURCE $FLB_TARBALL
@@ -12,7 +12,8 @@ RUN mkdir -p /fluent-bit/bin /fluent-bit/etc /fluent-bit/log /tmp/fluent-bit-mas
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && \
+RUN apt-get clean
+RUN apt-get update --allow-releaseinfo-change && \
     apt-get install -y --no-install-recommends \
     build-essential \
     curl \
@@ -61,9 +62,12 @@ COPY conf/fluent-bit.conf \
      conf/plugins.conf \
      /fluent-bit/etc/
 
-FROM gcr.io/distroless/cc-debian10
-MAINTAINER Eduardo Silva <eduardo@treasure-data.com>
-LABEL Description="Fluent Bit docker image" Vendor="Fluent Organization" Version="1.1"
+FROM amd64/debian:buster-slim
+
+RUN apt-get clean
+RUN apt-get update --allow-releaseinfo-change && \
+    apt-get install -y --no-install-recommends \
+    curl
 
 # Copy certificates
 COPY --from=builder /usr/share/ca-certificates/  /usr/share/ca-certificates/
@@ -103,6 +107,9 @@ COPY --from=builder /lib/x86_64-linux-gnu/libcom_err* /lib/x86_64-linux-gnu/
 COPY --from=builder /lib/x86_64-linux-gnu/libkeyutils* /lib/x86_64-linux-gnu/
 
 COPY --from=builder /fluent-bit /fluent-bit
+
+ADD probe.sh /
+RUN chmod 555 /probe.sh
 
 #
 EXPOSE 2020
